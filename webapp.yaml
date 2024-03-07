@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp-deployment
+  labels: #identifiers to be useful to users - required for pods, not deployments
+    app: webapp
+spec:
+  replicas: 1 #how many pods you would like to create
+  selector:
+    matchLabels:
+      app: webapp #all pods that match this label belong to this deployment - generally use 'app: key'
+  template: #configuration of pog in deployment config - configures pod in a deployment
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers: #list of containers in pod
+      - name: webapp
+        image: nanajanashia/k8s-demo-app:v1.0 #which docker image to be used
+        ports:
+        - containerPort: 3000 #should match image port
+        env:
+        - name: USER_NAME
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret #yaml file where secret is stored
+              key: mongo-user #key name in "data" in yaml secret file
+        - name: USER_PWD
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: mongo-password
+        - name: DB_URL
+          valueFrom:
+            configMapKeyRef:
+              name: mongo-config
+              key: mongo-url
+--- #separator for multiple configs
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service
+spec:
+  type: NodePort #default type is ClusterIP if not specified
+  selector: #select pods to forward requests to
+    app: webapp #should match deployment pod labels
+  ports:
+    - protocol: TCP
+      port: 3000 #standard is to match targetPort to keep things simple
+      targetPort: 3000 #port of pods that belong to service - should match container pod port as it needs to forward to that pod port
+      nodePort: 30100 #exposes the Service on each Node's IP at a static port - has to be in the range of 30000-32767 (in docs)

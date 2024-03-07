@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-deployment
+  labels: #identifiers to be useful to users - required for pods, not deployments
+    app: mongo
+spec:
+  replicas: 1 #how many pods you would like to create
+  selector:
+    matchLabels:
+      app: mongo #all pods that match this label belong to this deployment - generally use 'app: key'
+  template: #configuration of pog in deployment config - configures pod in a deployment
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers: #list of containers in pod
+      - name: mongodb
+        image: mongo:5.0 #which docker image to be used
+        ports:
+        - containerPort: 27017 #should match image port
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: mongo-user
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: mongo-password
+--- #separator for multiple configs
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-service
+spec:
+  selector: #select pods to forward requests to
+    app: mongo #should match deployment pod labels
+  ports:
+    - protocol: TCP
+      port: 27017 #standard is to match targetPort to keep things simple
+      targetPort: 27017 #port of pods that belong to service - should match container pod port as it needs to forward to that pod port
